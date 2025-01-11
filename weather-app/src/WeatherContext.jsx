@@ -1,42 +1,51 @@
-import React, { createContext, useContext, useReducer } from 'react'; 
+// WeatherContext.js
+import React, { createContext, useState, useEffect } from 'react';
+import axios from 'axios';
 
+// OpenWeather API anahtarınızı buraya ekleyin
+const API_KEY = 'YOUR_API_KEY'; // OpenWeather API anahtarınızı buraya ekleyin
 
-const WeatherContext = createContext()
+const WeatherContext = createContext();
 
-const initialState = {
-    selectedCity: 'Istanbul',
-    weatherData: null,
-  };
+const WeatherProvider = ({ children }) => {
+  const [city, setCity] = useState('Istanbul');
+  const [forecast, setForecast] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  const weatherReducer = (state, action) => {
-    switch (action.type) {
-      case 'SET_SELECTED_CITY':
-        return { ...state, selectedCity: action.payload };
-      case 'SET_WEATHER_DATA':
-        return { ...state, weatherData: action.payload };
-      default:
-        return state;
-    }
-  };
-  
-  const WeatherProvider = ({ children }) => {
+  useEffect(() => {
+    const fetchWeather = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        // API isteği: 7 günlük hava durumu
+        const response = await axios.get(
+          `https://api.openweathermap.org/data/2.5/forecast/daily`,
+          {
+            params: {
+              q: city,
+              cnt: 7,
+              units: 'metric',
+              appid: API_KEY,
+            },
+          }
+        );
+        setForecast(response.data.list);
+      } catch (err) {
+        setError('Hava durumu verileri alınırken bir hata oluştu.');
+      } finally {
+        setLoading(false);
+      }
+    };
 
-    const [state, dispatch] = useReducer(weatherReducer, initialState);
+    fetchWeather();
+  }, [city]);
 
-    return (
-      <WeatherContext.Provider value={{ state, dispatch }}>
-        {children}
-      </WeatherContext.Provider>
-    );
-  };
+  return (
+    <WeatherContext.Provider value={{ forecast, city, setCity, loading, error }}>
+      {children}
+    </WeatherContext.Provider>
+  );
+};
 
-    const useWeather = () => {
-        const context = useContext(WeatherContext);
-        if (!context) {
-          throw new Error('useWeather must be used within a WeatherProvider');
-        }
-        return context;
-      };
-      
-    export { WeatherProvider, useWeather };
-
+export { WeatherContext, WeatherProvider };
